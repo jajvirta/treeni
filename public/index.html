@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport"
+        content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+  <meta name="theme-color" content="#14181d">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="treeni">
+  <title>treeni — training log</title>
+  <link rel="manifest" href="manifest.webmanifest">
+  <link rel="apple-touch-icon" href="icons/icon-180.png">
+  <link rel="stylesheet" href="css/styles.css">
+</head>
+<body>
+  <header class="app-header">
+    <h1>🏋️ treeni</h1>
+    <nav class="tabs" role="tablist">
+      <button class="tab" data-view="today" role="tab">Today</button>
+      <button class="tab" data-view="progress" role="tab">Progress</button>
+      <button class="tab" data-view="program" role="tab">Program</button>
+    </nav>
+  </header>
+
+  <!-- ===================== TODAY (log) ===================== -->
+  <main id="view-today" class="view" role="tabpanel">
+    <div id="todayHome">
+      <div class="log-head"><h2>Session</h2><input type="date" id="sessionDate" class="date-input"></div>
+      <p class="hint-text" id="todaySummary">Any amount counts — showing up is the win.</p>
+      <p class="hint-text">Set an earlier date above to add a past workout manually.</p>
+      <div id="supersetCard" class="superset-start">
+        <button class="btn-primary big" id="btnSuperset">▦ Start superset</button>
+        <div id="supersetLabel" class="hint-text"></div>
+      </div>
+      <p class="hint-text">Or log a single exercise:</p>
+      <div id="exList" class="ex-list"></div>
+      <div class="actions">
+        <button class="btn-primary big" id="btnFinish" disabled>Finish session</button>
+      </div>
+      <div id="todayStatus" class="log-status"></div>
+    </div>
+
+    <div id="exLogger" class="hidden">
+      <div class="log-head"><h2 id="elName">Exercise</h2><button class="btn-ghost" id="elBack">← Done</button></div>
+      <div id="elGroup" class="ss-chips hidden"></div>
+      <div id="elRound" class="tk-cap hidden"></div>
+      <div id="elLast" class="lasttime"></div>
+      <ul id="elSets" class="set-list"></ul>
+      <div class="entry-grid">
+        <div class="entry-field" id="efWeight" data-field="weight"><div class="ef-lbl">weight</div><div class="ef-val" id="elWeight">—</div></div>
+        <div class="entry-field" id="efReps" data-field="reps"><div class="ef-lbl">reps</div><div class="ef-val" id="elReps">—</div></div>
+      </div>
+      <div id="elWin" class="win-note"></div>
+      <div id="loggerPad" class="numpad"></div>
+      <div class="actions">
+        <button class="btn-ghost" id="btnRepeat">Repeat last</button>
+        <button class="btn-primary" id="btnAddSet" disabled>Add set</button>
+      </div>
+    </div>
+  </main>
+
+  <!-- ===================== PROGRESS ===================== -->
+  <main id="view-progress" class="view hidden" role="tabpanel">
+    <div id="progCards" class="tk-cards"></div>
+    <div id="progExercises"></div>
+  </main>
+
+  <!-- ===================== PROGRAM ===================== -->
+  <main id="view-program" class="view hidden" role="tabpanel">
+    <details class="guide" open>
+      <summary>The time-efficient baseline</summary>
+      <ul>
+        <li><b>Frequency is the goal.</b> Aim for 2 sessions/week — 1 is fine on busy weeks. A week with any session keeps your streak.</li>
+        <li><b>Minimum effective dose.</b> ~4 hard sets per muscle group per week already grows muscle; more has diminishing returns. This isn't about maxing out.</li>
+        <li><b>Few sets, high effort.</b> 1–2 sets per exercise, taken close to failure (leave 1–2 reps in reserve), is enough.</li>
+        <li><b>Compound machines.</b> A handful of multi-joint lifts covers the whole body in little time.</li>
+        <li><b>Supersets save time.</b> Pair pushing + pulling exercises (below) — roughly halves the session with no real loss.</li>
+        <li><b>Load is flexible.</b> Any weight that brings you near failure in ~6–15 reps builds muscle. Full range of motion; minimal warm-up.</li>
+        <li class="note">Source: Iversen, Norum, Schoenfeld &amp; Fimland (2021), <i>Sports Medicine</i> — "No Time to Lift? Designing Time-Efficient Training Programs for Strength and Hypertrophy."</li>
+      </ul>
+    </details>
+    <div id="programBody"></div>
+  </main>
+
+  <script src="js/store.js"></script>
+  <script src="js/numpad.js"></script>
+  <script src="js/catalog.js"></script>
+  <script src="js/stats.js"></script>
+  <script src="js/workout.js"></script>
+  <script src="js/progress.js"></script>
+  <script src="js/program.js"></script>
+  <script src="js/app.js"></script>
+</body>
+</html>
