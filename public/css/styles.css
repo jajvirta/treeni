@@ -90,7 +90,8 @@ button { font-family: inherit; cursor: pointer; }
 .ex-list { display: flex; flex-direction: column; gap: 8px; margin-bottom: 12px; }
 .ex-btn { display: flex; align-items: center; justify-content: space-between; gap: 8px; background: var(--card); border: 1px solid var(--line); border-radius: 10px; padding: 12px 14px; color: var(--text); font-size: 1rem; font-weight: 600; text-align: left; }
 .ex-btn:hover { border-color: var(--accent); }
-.ex-btn .ex-meta { font-size: 0.72rem; color: var(--muted); font-weight: 400; }
+.ex-btn .ex-meta { font-size: 0.72rem; color: var(--muted); font-weight: 400; font-variant-numeric: tabular-nums; }
+.ex-btn .ex-bump { font-size: 0.72rem; color: var(--gold); font-weight: 600; }
 .ex-btn.done { border-color: var(--accent-dark); }
 .ex-btn .ex-check { color: var(--accent); }
 .tag { display: inline-block; font-size: 0.6rem; text-transform: uppercase; letter-spacing: 0.04em; color: var(--muted); border: 1px solid var(--line); border-radius: 999px; padding: 1px 7px; }
@@ -107,15 +108,21 @@ button { font-family: inherit; cursor: pointer; }
 .log-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px; }
 .log-head h2 { font-size: 1.15rem; color: var(--text); }
 .date-input { background: var(--bg); border: 1px solid var(--line); color: var(--text); border-radius: 8px; padding: 8px 10px; font-size: 0.9rem; }
-.lasttime { font-size: 0.8rem; color: var(--muted); margin-bottom: 8px; }
+.lasttime { font-size: 0.8rem; color: var(--muted); margin-bottom: 6px; font-variant-numeric: tabular-nums; }
+.lasttime .lt-rest { color: var(--muted); font-weight: 400; }
+/* live rest clock + "add a little weight" nudge (Today logger) */
+.rest-note { font-size: 0.8rem; color: var(--accent); font-weight: 600; font-variant-numeric: tabular-nums; margin-bottom: 6px; }
+.advice-note { font-size: 0.8rem; color: var(--gold); font-weight: 600; line-height: 1.4; margin-bottom: 8px; }
 .connect { background: var(--panel); border: 1px solid var(--line); border-radius: 12px; padding: 16px; margin-bottom: 16px; display: flex; flex-direction: column; gap: 10px; }
 .connect h2 { font-size: 1.05rem; color: var(--accent); }
 .connect input { padding: 11px; border-radius: 8px; border: 1px solid var(--line); background: var(--bg); color: var(--text); font-size: 0.95rem; }
 .conn-status { font-size: 0.8rem; }
 .conn-status.ok { color: var(--accent); }
 .conn-status.err { color: var(--red); }
-.cat-row { display: flex; align-items: center; justify-content: space-between; gap: 8px; background: var(--card); border-radius: 8px; padding: 10px 12px; margin-bottom: 6px; }
+.cat-row { display: grid; grid-template-columns: 1fr auto auto auto; align-items: center; gap: 8px; background: var(--card); border-radius: 8px; padding: 10px 12px; margin-bottom: 6px; }
 .cat-row .c-name { font-weight: 600; }
+.cat-row .c-num { display: flex; align-items: center; gap: 4px; font-size: 0.65rem; color: var(--muted); text-transform: uppercase; letter-spacing: 0.04em; }
+.cat-row .c-num input { width: 3.6em; padding: 6px 4px; border-radius: 6px; border: 1px solid var(--line); background: var(--bg); color: var(--text); font-size: 0.9rem; text-align: center; font-variant-numeric: tabular-nums; }
 .cat-row .c-x { background: none; border: none; color: var(--muted); font-size: 0.95rem; }
 .cat-row .c-x:hover { color: var(--red); }
 .cat-add { display: grid; grid-template-columns: 1fr auto auto; gap: 8px; margin-top: 8px; }
@@ -123,8 +130,9 @@ button { font-family: inherit; cursor: pointer; }
 .lasttime b { color: var(--gold); }
 
 .set-list { list-style: none; display: flex; flex-direction: column; gap: 6px; margin-bottom: 10px; }
-.set-row { display: grid; grid-template-columns: 2em 1fr 1fr 2.2em; gap: 8px; align-items: center; background: var(--card); border-radius: 8px; padding: 8px 10px; font-variant-numeric: tabular-nums; }
+.set-row { display: grid; grid-template-columns: 2em 1fr 1fr 3.4em 2.2em; gap: 8px; align-items: center; background: var(--card); border-radius: 8px; padding: 8px 10px; font-variant-numeric: tabular-nums; }
 .set-row .s-i { color: var(--muted); font-size: 0.8rem; }
+.set-row .s-r { color: var(--muted); font-size: 0.75rem; text-align: right; }
 .set-row .s-x { background: none; border: none; color: var(--muted); font-size: 0.9rem; }
 .set-row .s-x:hover { color: var(--accent); }
 .set-row.win { outline: 1px solid var(--gold); }
@@ -136,6 +144,16 @@ button { font-family: inherit; cursor: pointer; }
 .entry-field.active { outline: 2px solid var(--accent); }
 
 .win-note { font-size: 0.85rem; color: var(--gold); font-weight: 600; min-height: 1.2em; margin-bottom: 8px; }
+
+/* ---------- per-exercise set history (Progress) ---------- */
+.hist { margin-top: 10px; border-top: 1px solid var(--line); }
+.hist summary { cursor: pointer; padding: 8px 0 4px; font-size: 0.75rem; color: var(--muted); text-transform: uppercase; letter-spacing: 0.04em; }
+.hist summary::marker { color: var(--accent); }
+.hist-row { display: grid; grid-template-columns: 5.6em 1fr; gap: 8px; padding: 6px 0; border-bottom: 1px solid var(--line); font-variant-numeric: tabular-nums; }
+.hist-row:last-of-type { border-bottom: none; }
+.hist-row .h-date { font-size: 0.72rem; color: var(--muted); }
+.hist-row .h-sets { font-size: 0.85rem; font-weight: 600; }
+.hist-row .h-meta { grid-column: 2; font-size: 0.68rem; color: var(--muted); }
 
 /* ---------- numpad (shared, from darts-count) ---------- */
 .numpad { width: 100%; max-width: 380px; margin: 0 auto 12px; display: flex; flex-direction: column; gap: 8px; }
@@ -164,8 +182,18 @@ button { font-family: inherit; cursor: pointer; }
 .superset .ss-lbl { font-size: 0.65rem; text-transform: uppercase; letter-spacing: 0.05em; color: var(--accent); }
 .note { font-size: 0.8rem; color: var(--muted); line-height: 1.5; }
 
-/* keep header out of the way while logging on a phone */
+/* Keep the header out of the way while logging on a phone — but the "← Done"
+ * row then becomes the topmost element, so it has to claim the notch/status-bar
+ * inset the header used to hold (viewport-fit=cover means the page owns it).
+ * Sticky so Done stays reachable as the set list grows. */
 @media (max-width: 620px) {
   body.logging .app-header { display: none; }
+  body.logging .view { padding-top: max(14px, calc(env(safe-area-inset-top) + 8px)); }
+  body.logging #exLogger .log-head {
+    position: sticky; top: 0; z-index: 5;
+    background: var(--bg);
+    padding: 4px 0 8px;
+    margin-bottom: 6px;
+  }
 }
 @media (prefers-reduced-motion: reduce) { .np-key, .tab { transition: none; } }

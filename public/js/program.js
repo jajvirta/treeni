@@ -36,11 +36,18 @@
   }
 
   function catalogHtml() {
-    const rows = global.Catalog.all().map(e =>
-      `<div class="cat-row"><span class="c-name">${esc(e.name)} <span class="tag">${(e.muscles || [])[0] || ''}</span></span>` +
-      `<button class="c-x" data-id="${esc(e.id)}" aria-label="remove">✕</button></div>`).join('');
+    const rows = global.Catalog.all().map(e => {
+      const id = esc(e.id);
+      return `<div class="cat-row"><span class="c-name">${esc(e.name)} <span class="tag">${(e.muscles || [])[0] || ''}</span></span>` +
+        `<label class="c-num">reps<input type="number" class="c-target" data-id="${id}" min="1" max="100" step="1" value="${global.Catalog.target(e.id)}"></label>` +
+        `<label class="c-num">+kg<input type="number" class="c-step" data-id="${id}" min="0.5" max="50" step="0.5" value="${global.Catalog.step(e.id)}"></label>` +
+        `<button class="c-x" data-id="${id}" aria-label="remove">✕</button></div>`;
+    }).join('');
     const opts = GROUPS.map(g => `<option value="${g}">${g}</option>`).join('');
-    return '<div class="setup-card"><h2>Exercises</h2>' + (rows || '<p class="hint-text">No exercises.</p>') +
+    return '<div class="setup-card"><h2>Exercises</h2>' +
+      '<p class="hint-text"><b>reps</b> is your target per set, <b>+kg</b> the jump to suggest. ' +
+      'Hit the target on every set — or repeat a session set-for-set — and Today nudges you to add that much.</p>' +
+      (rows || '<p class="hint-text">No exercises.</p>') +
       '<div class="cat-add">' +
       '<input type="text" id="newExName" placeholder="New exercise name">' +
       `<select id="newExGroup">${opts}</select>` +
@@ -64,6 +71,17 @@
     els.body.querySelectorAll('.ss-opt input').forEach(cb => cb.addEventListener('change', saveSuperset));
     els.body.querySelectorAll('.c-x').forEach(b =>
       b.addEventListener('click', () => { global.Catalog.remove(b.getAttribute('data-id')); render(); }));
+    // Save on change (no re-render — that would steal focus mid-edit).
+    els.body.querySelectorAll('.c-target').forEach(i => i.addEventListener('change', () => {
+      const n = Math.round(Number(i.value));
+      if (n >= 1 && n <= 100) global.Catalog.update(i.getAttribute('data-id'), { targetReps: n });
+      else i.value = global.Catalog.target(i.getAttribute('data-id'));
+    }));
+    els.body.querySelectorAll('.c-step').forEach(i => i.addEventListener('change', () => {
+      const n = Number(i.value);
+      if (n > 0 && n <= 50) global.Catalog.update(i.getAttribute('data-id'), { step: n });
+      else i.value = global.Catalog.step(i.getAttribute('data-id'));
+    }));
     saveSuperset();
   }
 

@@ -9,6 +9,11 @@
   const $ = id => document.getElementById(id);
   const r0 = n => Math.round(n);
   const r1 = n => (Math.round(n * 10) / 10);
+  const HIST_MAX = 12;   // sessions listed per exercise before "+N earlier"
+  const fmtRest = sec => sec >= 3600
+    ? `${Math.floor(sec / 3600)}h${String(Math.round((sec % 3600) / 60)).padStart(2, '0')}`
+    : `${Math.floor(sec / 60)}:${String(sec % 60).padStart(2, '0')}`;
+  const fmtSets = (sets, u) => Stats.groupSets(sets).map(g => `${g.weight}${u} × ${g.reps.join(', ')}`).join(' · ');
 
   let els = {};
 
@@ -54,6 +59,20 @@
       '<div class="tk-cap">gold = below the minimum effective dose</div></div>';
   }
 
+  // Every set of every session, newest first — "was bench 48kg × 10,10,9,6 last
+  // time?" is the question this answers. Collapsed by default.
+  function historyDetails(hist, u) {
+    const rows = hist.slice().reverse().slice(0, HIST_MAX).map(p =>
+      '<div class="hist-row">' +
+      `<span class="h-date">${p.date}</span>` +
+      `<span class="h-sets">${fmtSets(p.sets, u)}</span>` +
+      `<span class="h-meta">${p.setCount} set${p.setCount > 1 ? 's' : ''}` +
+      `${p.avgRest != null ? ' · rest ~' + fmtRest(p.avgRest) : ''} · ${r0(p.volume)} vol</span>` +
+      '</div>').join('');
+    const more = hist.length > HIST_MAX ? `<div class="tk-cap">+${hist.length - HIST_MAX} earlier session(s)</div>` : '';
+    return `<details class="hist"><summary>All sets · ${hist.length} session${hist.length > 1 ? 's' : ''}</summary>${rows}${more}</details>`;
+  }
+
   function renderExercises(sessions) {
     const blocks = Catalog.all().map(ex => {
       const hist = Stats.exerciseHistory(sessions, ex.id);
@@ -68,11 +87,18 @@
       else if (win.dv > 0) note = `+${r0(win.dv)} volume`;
       else if (win.matched) note = 'matched last time';
       const best = hist.reduce((b, p) => p.e1rm > b ? p.e1rm : b, 0);
+      const adv = Stats.progressionAdvice(hist, { targetReps: Catalog.target(ex.id), step: Catalog.step(ex.id) });
+      const bump = adv.bump
+        ? `<div class="advice-note">⬆ ${adv.reason === 'repeat' ? 'Same sets as the session before' : `${adv.targetReps} reps on every set`}` +
+          ` — try <b>${adv.suggestWeight}${u}</b> next time.</div>`
+        : '';
       return '<div class="tk-card tk-wide">' +
         `<div class="tk-row"><span class="tk-big">${last.topWeight}${u}</span><span class="tk-unit">× ${last.topReps} top set · ${hist.length} session${hist.length > 1 ? 's' : ''}</span></div>` +
-        `<div class="tk-sub"><b>${ex.name}</b> · ${note ? '<span style="color:var(--gold)">' + note + '</span> · ' : ''}est. 1RM ~${r0(best)}${u}</div>` +
+        `<div class="tk-sub"><b>${ex.name}</b> · ${note ? '<span style="color:var(--gold)">' + note + '</span> · ' : ''}target ${adv.targetReps} reps · est. 1RM ~${r0(best)}${u}</div>` +
+        bump +
         sparkline(hist.map(p => p.volume), 'var(--accent)') +
-        '<div class="tk-cap">session volume (weight × reps)</div></div>';
+        '<div class="tk-cap">session volume (weight × reps)</div>' +
+        historyDetails(hist, u) + '</div>';
     }).filter(Boolean);
     els.exercises.innerHTML = blocks.length ? blocks.join('') : '';
   }

@@ -73,10 +73,12 @@ the Program tab (add other machines as needed).
 
 ## Data model (localStorage keys prefixed `trn.`)
 
-- **Exercise** (`trn.catalog`): `{ id, name, muscles: [group], machine?, unit:'kg'|'lb', defaultReps?, notes? }`.
-  Seeded from the default program; user-editable.
+- **Exercise** (`trn.catalog`): `{ id, name, muscles: [group], machine?, unit:'kg'|'lb', targetReps, step, notes? }`.
+  Seeded from the default program; user-editable (incl. target reps & weight step in Program).
   `group ∈ {legs, push, pull, core}` (coarse on purpose — motivation, not sports science).
-- **Session** (`trn.sessions[]`): `{ id, date:'yyyy-mm-dd', entries: [ { exerciseId, sets: [ { weight, reps, rir? } ] } ], notes?, durationMin? }`.
+- **Session** (`trn.sessions[]`): `{ id, date:'yyyy-mm-dd', entries: [ { exerciseId, sets: [ { weight, reps, ts? } ] } ], notes?, durationMin? }`.
+  `ts` = epoch ms when the set was logged; rest between sets is derived from it in
+  `stats.js` (never stored). Absent on legacy/manually added sets → rest unknown.
 - **In-progress** (`trn.current`): autosaved today-session so a reload/leave never loses reps.
 - **Settings/goals** (`trn.settings`): `{ freqAim:2, freqFloor:1, unit, ... }`.
 
