@@ -56,16 +56,18 @@ CloudFront. Architecture adapted from the `darts-count` app.
 
 - **`stats.js` is the single source of truth** for all analytics (volume,
   frequency/streak, per-exercise history + small-win detection, weekly
-  sets-per-muscle). Pure, no DOM/I/O. The views only format its output. After
+  sets-per-muscle, rest between sets, add-weight advice). Pure, no DOM/I/O. The
+  views only format its output. After
   changing it, re-run the Node unit snippet (below).
 - **Frequency is the headline, not load.** Keep the streak/frequency card the
   loudest thing on Progress; never build a 1RM leaderboard or a
   missed-schedule scold. `freqAim`/`freqFloor` default 2/1.
 - **Sessions writes go through `Sessions.add/update/remove`** (which call
   `Store`), never straight to localStorage — the mirror is a read cache only.
-- **A workout session shape** is `{ date, entries:[{exerciseId, sets:[{weight,reps}]}], notes? }`.
+- **A workout session shape** is `{ date, entries:[{exerciseId, sets:[{weight,reps,ts?}]}], notes? }`.
   The Lambda derives `volume/sets/reps` — don't duplicate that math on the client
-  path that writes.
+  path that writes. `ts` is the epoch-ms stamp of when the set was logged (absent
+  on legacy/manual sets); **rest is always derived from it, never stored**.
 - **The session date is user-controlled** (change it on Today to log a past
   workout manually) — don't reintroduce auto-migration of "stale" sessions.
 - **The superset group is `Settings.superset`** (default `[bench-press, seated-row]`,

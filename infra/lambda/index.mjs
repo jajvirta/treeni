@@ -6,7 +6,9 @@
  *
  * Storage is intentionally thin — all analytics live client-side in stats.js.
  * A workout session is:
- *   { date:'yyyy-mm-dd', entries:[{ exerciseId, sets:[{weight,reps}] }], notes? }
+ *   { date:'yyyy-mm-dd', entries:[{ exerciseId, sets:[{weight,reps,ts?}] }], notes? }
+ * `ts` is the epoch-ms stamp of when the set was logged — kept so the client can
+ * derive rest times between sets; optional (manual/legacy entries have none).
  * darts/score-style totals (volume/sets/reps) are DERIVED here for convenience.
  *
  * Env: TABLE_NAME, API_TOKEN (X-Api-Key), ORIGIN_SECRET (X-Origin-Secret guard).
@@ -62,7 +64,16 @@ export function validateSession(obj) {
       const reps = Number(s && s.reps);
       if (!Number.isFinite(weight) || weight < 0 || weight > 2000) return { ok: false, error: 'weight must be 0–2000' };
       if (!Number.isInteger(reps) || reps < 1 || reps > 1000) return { ok: false, error: 'reps must be an integer 1–1000' };
-      sets.push({ weight, reps });
+      const set = { weight, reps };
+      if (s && s.ts != null) {
+        const ts = Number(s.ts);
+        // epoch ms, loosely sane: 2001-09-09 … 2096. Bad stamps are rejected
+        // rather than dropped, so a client bug surfaces instead of silently
+        // losing rest data.
+        if (!Number.isInteger(ts) || ts < 1e12 || ts > 4e12) return { ok: false, error: 'set.ts must be an epoch-ms integer' };
+        set.ts = ts;
+      }
+      sets.push(set);
       volume += weight * reps; setCount += 1; repTotal += reps;
     }
     if (sets.length) entries.push({ exerciseId, sets });

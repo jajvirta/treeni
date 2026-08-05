@@ -11,10 +11,12 @@
 
   // Default program — minimum effective dose from the "No Time to Lift?" review:
   // ~6 compound machines, 1–2 hard sets each, paired as 3 supersets, 1–2×/week.
+  // `targetReps` is the rep count you're aiming for on every set — hit it on all
+  // sets (or repeat a session exactly) and the app suggests +`step` kg.
   const DEFAULT_EXERCISES = [
-    { id: 'bench-press', name: 'Bench press', muscles: ['push'], machine: true, unit: 'kg', defaultReps: 10 },
-    { id: 'seated-row', name: 'Seated row', muscles: ['pull'], machine: true, unit: 'kg', defaultReps: 10 },
-    { id: 'leg-press', name: 'Leg press', muscles: ['legs'], machine: true, unit: 'kg', defaultReps: 10 },
+    { id: 'bench-press', name: 'Bench press', muscles: ['push'], machine: true, unit: 'kg', targetReps: 10, step: 2.5 },
+    { id: 'seated-row', name: 'Seated row', muscles: ['pull'], machine: true, unit: 'kg', targetReps: 10, step: 2.5 },
+    { id: 'leg-press', name: 'Leg press', muscles: ['legs'], machine: true, unit: 'kg', targetReps: 12, step: 5 },
   ];
 
   // The default superset — bench + row done alternating (agonist–antagonist),
@@ -48,9 +50,15 @@
     add(ex) {
       const id = ex.id || slug(ex.name);
       if (this.get(id)) return this.get(id);
-      const rec = { id, name: ex.name, muscles: ex.muscles || ['push'], machine: !!ex.machine, unit: ex.unit || 'kg', defaultReps: ex.defaultReps || 10, notes: ex.notes || '' };
+      const rec = {
+        id, name: ex.name, muscles: ex.muscles || ['push'], machine: !!ex.machine, unit: ex.unit || 'kg',
+        targetReps: ex.targetReps || ex.defaultReps || 10, step: ex.step || 2.5, notes: ex.notes || '',
+      };
       list.push(rec); persist(); return rec;
     },
+    // Tolerant reads — catalogs seeded before targetReps/step existed fall back.
+    target(id) { const e = this.get(id) || {}; return e.targetReps || e.defaultReps || 10; },
+    step(id) { const e = this.get(id) || {}; return e.step || 2.5; },
     update(id, patch) {
       const e = this.get(id); if (!e) return null;
       Object.assign(e, patch); persist(); return e;

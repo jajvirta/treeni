@@ -57,11 +57,14 @@ Writes send a **JSON body** (the workout has a nested `entries[]`/`sets[]`).
 | Method | Path             | Body (JSON)                              | Returns            |
 |--------|------------------|------------------------------------------|--------------------|
 | GET    | `/sessions`      | —                                        | `{ sessions: [] }` |
-| POST   | `/sessions`      | `{ date, entries:[{exerciseId,sets:[{weight,reps}]}], notes? }` | `{ session }` |
+| POST   | `/sessions`      | `{ date, entries:[{exerciseId,sets:[{weight,reps,ts?}]}], notes? }` | `{ session }` |
 | PUT    | `/sessions/{id}` | same                                     | `{ session }`      |
 | DELETE | `/sessions/{id}` | —                                        | `{ deleted }`      |
 
 The Lambda derives `volume` (Σ weight×reps), `sets`, and `reps` from `entries`.
+Per-set `ts` (epoch ms, when the set was logged) is optional and stored verbatim —
+the client derives rest times from it; a non-integer/out-of-range `ts` is a 400
+rather than being silently dropped.
 
 **Writes carry data in the query string, not a JSON body.** This started as an
 OAC workaround (OAC doesn't sign bodies) and is kept now because it's harmless

@@ -2,7 +2,9 @@
  * stats.js — training analytics (pure, no DOM, no I/O).
  * Single source of truth for the progress/frequency math, used by the
  * browser (window.Stats) and unit-testable via the Node export shim.
- * A "session" is { date:'yyyy-mm-dd', entries:[{ exerciseId, sets:[{weight,reps}] }] }.
+ * A "session" is { date:'yyyy-mm-dd', entries:[{ exerciseId, sets:[{weight,reps,ts?}] }] }.
+ * `ts` (epoch ms, stamped when the set was logged) is optional — older and
+ * manually added sets have none, so rest times are simply unknown there.
  * Frequency is the headline metric — the app is about showing up, not maxing.
  * ============================================================ */
 (function (global) {
@@ -69,6 +71,35 @@
     };
   }
 
+  // Rest between consecutive sets of ONE exercise, in seconds: element i is the
+  // gap from set i-1 to set i. null where unknowable (first set, missing `ts`).
+  function restBetween(sets) {
+    sets = sets || [];
+    return sets.map((s, i) => {
+      if (!i) return null;
+      const a = (sets[i - 1] || {}).ts, b = s && s.ts;
+      if (!Number.isFinite(a) || !Number.isFinite(b) || b < a) return null;
+      return Math.round((b - a) / 1000);
+    });
+  }
+  function avgRest(sets) {
+    const xs = restBetween(sets).filter(n => n != null);
+    return xs.length ? Math.round(sum(xs) / xs.length) : null;
+  }
+
+  // Collapse consecutive same-weight sets so a view can print
+  // "48kg × 10, 10, 9, 6" instead of four rows. Data only — views format.
+  function groupSets(sets) {
+    const out = [];
+    (sets || []).forEach(s => {
+      const w = s.weight || 0;
+      const last = out[out.length - 1];
+      if (last && last.weight === w) last.reps.push(s.reps || 0);
+      else out.push({ weight: w, reps: [s.reps || 0] });
+    });
+    return out;
+  }
+
   // A small, comparable snapshot of one exercise in one session.
   function point(session, exId) {
     const entry = (session.entries || []).find(e => e.exerciseId === exId);
@@ -87,7 +118,38 @@
       topSet: { weight: top.weight || 0, reps: top.reps || 0 },
       e1rm: round(epley1RM(top.weight || 0, top.reps || 0)),
       sets: sets.slice(),
+      avgRest: avgRest(sets),
     };
+  }
+
+  // Same sets, same order — weight AND reps identical.
+  const sameSets = (a, b) => a.length === b.length && a.every((s, i) =>
+    (s.weight || 0) === (b[i].weight || 0) && (s.reps || 0) === (b[i].reps || 0));
+
+  // "Time to add a little weight?" — a nudge, never a scold. Two triggers:
+  //   'repeat' — the last session repeated the previous one set-for-set
+  //   'target' — every set at the top weight hit the exercise's target reps
+  // Both need two logged sessions of this exercise: one session is a baseline,
+  // not a trend, and nudging off it just pushes the weight up before you've seen
+  // how the lift actually feels.
+  // Takes an exerciseHistory() series; suggests topWeight + step.
+  function progressionAdvice(history, opts) {
+    opts = opts || {};
+    const targetReps = opts.targetReps || 10;
+    const step = opts.step || 2.5;
+    const n = (history || []).length;
+    const base = { bump: false, reason: 'none', targetReps, step, suggestWeight: null, topWeight: null, date: null };
+    if (!n) return base;
+
+    const cur = history[n - 1];
+    const prev = n > 1 ? history[n - 2] : null;
+    const out = { ...base, suggestWeight: round(cur.topWeight + step), topWeight: cur.topWeight, date: cur.date };
+    const atTop = cur.sets.filter(s => (s.weight || 0) === cur.topWeight);
+
+    if (!prev) return { ...out, reason: 'baseline' };
+    if (sameSets(cur.sets, prev.sets)) return { ...out, bump: true, reason: 'repeat' };
+    if (atTop.length && atTop.every(s => (s.reps || 0) >= targetReps)) return { ...out, bump: true, reason: 'target' };
+    return { ...out, reason: 'progressing' };
   }
 
   // Structured "did I beat last time?" — deltas only; the UI formats the note.
@@ -129,6 +191,7 @@
   global.Stats = {
     dayNum, weekIndex, weekIndexFromDay, epley1RM,
     sessionVolume, weeklyFrequency, point, smallWin, exerciseHistory, weeklySetsByMuscle,
+    restBetween, avgRest, groupSets, progressionAdvice,
     MIN_SETS_PER_MUSCLE: 4, TARGET_SETS_PER_MUSCLE: 10,
   };
 })(typeof window !== 'undefined' ? window : globalThis);
