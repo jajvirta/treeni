@@ -10,6 +10,8 @@
   const r0 = n => Math.round(n);
   const r1 = n => (Math.round(n * 10) / 10);
   const HIST_MAX = 12;   // sessions listed per exercise before "+N earlier"
+  const SES_MAX = 20;    // sessions in the browsable/deletable list
+  const esc = s => String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
   const fmtRest = sec => sec >= 3600
     ? `${Math.floor(sec / 3600)}h${String(Math.round((sec % 3600) / 60)).padStart(2, '0')}`
     : `${Math.floor(sec / 60)}:${String(sec % 60).padStart(2, '0')}`;
@@ -103,6 +105,63 @@
     els.exercises.innerHTML = blocks.length ? blocks.join('') : '';
   }
 
+  // ---- saved-session browser (the only place stored data can be deleted) ----
+  // Sessions live in DynamoDB, so both actions are real network writes: dropping
+  // a whole session, or one set out of one (which becomes a full-session delete
+  // when it was the last set — the backend requires at least one).
+  function sessionsHtml(sessions) {
+    const rows = sessions.slice().reverse().slice(0, SES_MAX).map(s => {
+      const tot = Stats.sessionVolume(s);
+      const names = (s.entries || []).map(e => (Catalog.get(e.exerciseId) || {}).name || e.exerciseId).join(', ');
+      const body = (s.entries || []).map(e => {
+        const ex = Catalog.get(e.exerciseId) || { name: e.exerciseId, unit: 'kg' };
+        const u = ex.unit || 'kg';
+        const rests = Stats.restBetween(e.sets);
+        const sets = e.sets.map((x, i) =>
+          `<li class="set-row"><span class="s-i">${i + 1}</span><span>${x.weight}${u}</span>` +
+          `<span>${x.reps} reps</span><span class="s-r">${rests[i] != null ? fmtRest(rests[i]) : ''}</span>` +
+          `<button class="s-x" data-del-set="${esc(s.id)}" data-ex="${esc(e.exerciseId)}" data-i="${i}" aria-label="discard set">✕</button></li>`).join('');
+        return `<div class="ses-ex"><div class="tk-cap">${esc(ex.name)}</div><ul class="set-list">${sets}</ul></div>`;
+      }).join('');
+      return `<details class="ses"><summary>${s.date} · ${tot.sets} set${tot.sets > 1 ? 's' : ''} · ${r0(tot.volume)} vol` +
+        `<span class="ses-names">${esc(names)}</span></summary>${body}` +
+        `<button class="btn-ghost danger" data-del-ses="${esc(s.id)}">Discard this session</button></details>`;
+    }).join('');
+    const more = sessions.length > SES_MAX ? `<div class="tk-cap">showing the last ${SES_MAX} of ${sessions.length}</div>` : '';
+    return '<div class="tk-card tk-wide"><div class="tk-row"><span class="tk-unit">sessions · tap one to see or discard its sets</span></div>' +
+      `<div class="ses-list">${rows}</div>${more}</div>`;
+  }
+
+  function setStatus(msg, kind) { els.status.textContent = msg || ''; els.status.className = 'log-status' + (kind ? ' ' + kind : ''); }
+
+  async function delSession(id) {
+    const s = global.Sessions.all().find(x => x.id === id);
+    if (!s) return;
+    const tot = Stats.sessionVolume(s);
+    if (!global.confirm(`Discard the whole ${s.date} session (${tot.sets} set${tot.sets > 1 ? 's' : ''})? This deletes it from the database.`)) return;
+    setStatus('Discarding…');
+    try { await global.Sessions.remove(id); render(); setStatus('Session discarded.', 'ok'); }
+    catch (e) { setStatus((e && e.message) || 'discard failed', 'err'); }
+  }
+
+  async function delSet(id, exId, idx) {
+    const s = global.Sessions.all().find(x => x.id === id);
+    if (!s) return;
+    // deep copy — Sessions.all() hands out the live cache objects
+    const entries = (s.entries || []).map(e => ({ exerciseId: e.exerciseId, sets: e.sets.map(x => ({ ...x })) }));
+    const entry = entries.find(e => e.exerciseId === exId);
+    if (!entry || !entry.sets[idx]) return;
+    entry.sets.splice(idx, 1);
+    const left = entries.reduce((a, e) => a + e.sets.length, 0);
+    if (!left) return delSession(id);   // backend needs ≥1 set: drop the session
+    if (!global.confirm('Discard this set?')) return;
+    setStatus('Discarding…');
+    try {
+      await global.Sessions.update(id, { date: s.date, entries: entries.filter(e => e.sets.length), notes: s.notes || '' });
+      render(); setStatus('Set discarded.', 'ok');
+    } catch (e) { setStatus((e && e.message) || 'discard failed', 'err'); }
+  }
+
   function render() {
     const sessions = global.Sessions.all();
     if (!sessions.length) {
@@ -110,16 +169,27 @@
         '<span class="tk-unit">sessions yet</span></div>' +
         '<div class="tk-sub">Log your first session on <b>Today</b> — that\'s the whole game. 💪</div></div>';
       els.exercises.innerHTML = '';
+      els.sessions.innerHTML = '';
       return;
     }
     const f = Stats.weeklyFrequency(sessions, { freqAim: Settings.get('freqAim'), freqFloor: Settings.get('freqFloor') });
     els.cards.innerHTML = freqCard(f) + muscleCard(sessions);
     renderExercises(sessions);
+    els.sessions.innerHTML = sessionsHtml(sessions);
   }
 
   global.Progress = {
-    init() { els = { cards: $('progCards'), exercises: $('progExercises') }; },
-    onActivate() { render(); },
+    init() {
+      els = { cards: $('progCards'), exercises: $('progExercises'), sessions: $('progSessions'), status: $('progStatus') };
+      // delegated: the list is re-rendered wholesale after every write
+      els.sessions.addEventListener('click', e => {
+        const ses = e.target.closest('[data-del-ses]');
+        if (ses) { delSession(ses.getAttribute('data-del-ses')); return; }
+        const set = e.target.closest('[data-del-set]');
+        if (set) delSet(set.getAttribute('data-del-set'), set.getAttribute('data-ex'), parseInt(set.getAttribute('data-i'), 10));
+      });
+    },
+    onActivate() { setStatus(''); render(); },
     onDeactivate() {},
     onKey() {},
   };

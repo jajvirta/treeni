@@ -41,6 +41,12 @@ CloudFront. Architecture adapted from the `darts-count` app.
   session (`trn.current`) is autosaved locally so a reload never loses reps.
   Writes hit the backend on **Finish** (and manual add); if unconnected/ offline,
   the entry stays in `trn.current` to retry.
+- **Deleting** is deliberately split: *Today* → "Discard session" only drops the
+  local in-progress session (never a network call); the ✕ on a set row drops one
+  unsaved set. *Progress* → the session browser is the only place stored data can
+  be removed (`Sessions.remove`, or `Sessions.update` to drop one set). Both
+  confirm first, and discarding a saved session's last set becomes a full-session
+  delete — the Lambda rejects a session with zero sets.
 - **Connect flow:** the app needs an `X-Api-Key` token pasted once in the
   **Program** tab (`Settings` → `trn.settings.apiToken`). If unset on boot,
   `app.js` routes to Program.

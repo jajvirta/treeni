@@ -59,6 +59,10 @@ button { font-family: inherit; cursor: pointer; }
 .btn-primary:disabled { opacity: 0.45; }
 .btn-ghost { background: transparent; border: 1px solid var(--line); color: var(--muted); border-radius: 8px; padding: 10px 14px; font-size: 0.9rem; font-weight: 600; }
 .btn-ghost:hover { border-color: var(--accent); color: var(--accent); }
+/* destructive, deliberately quiet — never competes with Finish */
+.btn-ghost.danger { color: #b06a66; }
+.btn-ghost.danger:hover { border-color: var(--red); color: var(--red); }
+.btn-ghost:disabled { opacity: 0.4; }
 
 /* ---------- Stat cards (Progress dashboard) ---------- */
 .tk-cards { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 16px; }
@@ -155,6 +159,17 @@ button { font-family: inherit; cursor: pointer; }
 .hist-row .h-sets { font-size: 0.85rem; font-weight: 600; }
 .hist-row .h-meta { grid-column: 2; font-size: 0.68rem; color: var(--muted); }
 
+/* ---------- saved-session browser (Progress) ---------- */
+.ses-list { display: flex; flex-direction: column; gap: 6px; margin-top: 8px; }
+.ses { background: var(--panel); border-radius: 10px; padding: 8px 12px; }
+.ses summary { cursor: pointer; font-size: 0.85rem; font-weight: 600; font-variant-numeric: tabular-nums; padding: 4px 0; }
+.ses summary::marker { color: var(--accent); }
+.ses .ses-names { display: block; font-size: 0.7rem; font-weight: 400; color: var(--muted); }
+.ses .ses-ex { margin-top: 8px; }
+.ses .set-list { margin-bottom: 8px; }
+.ses .set-row { background: var(--bg); }
+.ses .btn-ghost { width: 100%; margin: 4px 0 6px; }
+
 /* ---------- numpad (shared, from darts-count) ---------- */
 .numpad { width: 100%; max-width: 380px; margin: 0 auto 12px; display: flex; flex-direction: column; gap: 8px; }
 .np-row { display: flex; gap: 8px; }
@@ -175,6 +190,7 @@ button { font-family: inherit; cursor: pointer; }
 
 .actions { display: flex; gap: 10px; }
 .actions .btn-primary { flex: 1; }
+.actions-end { justify-content: flex-end; margin-top: 8px; }
 .log-status { font-size: 0.85rem; min-height: 1.2em; color: var(--muted); }
 .log-status.ok { color: var(--accent); }
 .log-status.err { color: var(--red); }

@@ -84,6 +84,7 @@
       ? `${totalSets} set${totalSets > 1 ? 's' : ''} logged today — nice. Add more or finish.`
       : 'Any amount counts — showing up is the win.';
     els.finish.disabled = !totalSets;
+    els.discard.disabled = !totalSets;
   }
 
   function showHome() {
@@ -286,6 +287,18 @@
       els.finish.disabled = false;
     }
   }
+  // Throw away the in-progress session — nothing has reached the backend yet, so
+  // this is purely local. Handy for dumping a UI test run.
+  function discardSession() {
+    const n = current.entries.reduce((a, e) => a + e.sets.length, 0);
+    if (!n) return;
+    if (!global.confirm(`Discard ${n} set${n > 1 ? 's' : ''} from today's session? This can't be undone.`)) return;
+    clearCur();
+    current = { date: todayISO(), entries: [] };
+    showHome();
+    setStatus('Session discarded — nothing was saved.');
+  }
+
   function changeDate(v) { if (/^\d{4}-\d{2}-\d{2}$/.test(v)) { current.date = v; saveCur(); renderHome(); } }
   function setStatus(msg, kind) { els.status.textContent = msg || ''; els.status.className = 'log-status' + (kind ? ' ' + kind : ''); }
 
@@ -303,7 +316,7 @@
         home: $('todayHome'), logger: $('exLogger'),
         date: $('sessionDate'), summary: $('todaySummary'), exList: $('exList'),
         superBtn: $('btnSuperset'), superLabel: $('supersetLabel'),
-        finish: $('btnFinish'), status: $('todayStatus'),
+        finish: $('btnFinish'), discard: $('btnDiscard'), status: $('todayStatus'),
         name: $('elName'), group: $('elGroup'), round: $('elRound'), last: $('elLast'),
         rest: $('elRest'), advice: $('elAdvice'), sets: $('elSets'),
         efWeight: $('efWeight'), efReps: $('efReps'), weight: $('elWeight'), reps: $('elReps'),
@@ -313,6 +326,7 @@
       els.exList.addEventListener('click', e => { const b = e.target.closest('[data-ex]'); if (b) openSingle(b.getAttribute('data-ex')); });
       els.superBtn.addEventListener('click', openSuperset);
       els.finish.addEventListener('click', finish);
+      els.discard.addEventListener('click', discardSession);
       els.date.addEventListener('change', e => changeDate(e.target.value));
       els.back.addEventListener('click', showHome);
       els.addSet.addEventListener('click', addSet);
