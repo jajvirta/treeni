@@ -33,6 +33,10 @@
   let superMode = false;   // cycle through group, auto-advance on add
   let entry = { weight: '', reps: '' };
   let active = 'weight';
+  // Armed whenever a field is (re)focused or pre-filled: the next digit REPLACES
+  // the value instead of appending, so you never have to backspace a pre-fill
+  // away. '.' is the exception — it extends the value (48 → 48.5).
+  let overwrite = false;
 
   const activeId = () => group && group[activeIdx];
 
@@ -139,6 +143,7 @@
       entry = last ? { weight: String(last.topWeight), reps: String(last.topReps) } : { weight: '', reps: '' };
     }
     active = 'weight';
+    overwrite = true;
   }
 
   function renderLogger() {
@@ -200,37 +205,52 @@
     els.addSet.disabled = !valid;
     els.addSet.textContent = superMode ? 'Log & next →' : 'Add set';
     Numpad.setEnter(active === 'weight' ? 'Next' : (superMode ? 'Next ex' : 'Add'), active === 'weight' ? entry.weight !== '' : valid);
+    Numpad.setEnabled('.', active === 'weight' && entry.weight.indexOf('.') < 0);
     tickRest();   // switching exercises re-points the rest clock
   }
 
   // ---- input ----------------------------------------------------------
+  const MAXLEN = { weight: 6, reps: 3 };   // weight fits "1000.5"
+
   function onDigit(d) {
-    const max = active === 'weight' ? 4 : 3;
-    let v = entry[active];
+    if (d === '.' || d === ',') return onDot();
+    let v = overwrite ? '' : entry[active];
+    overwrite = false;
     v = (v === '0') ? d : (v + d);
-    if (v.length > max) return;
+    if (v.length > MAXLEN[active]) return;
     entry[active] = v; renderLogger();
   }
+  // Fractional plates: 68.5kg. Reps stay whole numbers.
+  function onDot() {
+    if (active !== 'weight') return;
+    overwrite = false;
+    const v = entry.weight;
+    if (v.indexOf('.') >= 0 || v.length >= MAXLEN.weight) return;
+    entry.weight = (v === '' ? '0' : v) + '.';
+    renderLogger();
+  }
   function onBackspace() {
+    overwrite = false;
     if (entry[active]) entry[active] = entry[active].slice(0, -1);
-    else if (active === 'reps') active = 'weight';
+    else if (active === 'reps') { active = 'weight'; overwrite = true; }
     renderLogger();
   }
   function onEnter() {
-    if (active === 'weight') { if (entry.weight !== '') { active = 'reps'; renderLogger(); } return; }
+    if (active === 'weight') { if (entry.weight !== '') setActive('reps'); return; }
     addSet();
   }
-  function setActive(f) { active = f; renderLogger(); }
+  function setActive(f) { active = f; overwrite = true; renderLogger(); }
 
   function advance() { activeIdx = (activeIdx + 1) % group.length; prefill(activeId()); }
 
   function addSet() {
     const id = activeId(); const reps = Number(entry.reps);
     if (!(reps > 0)) return;
-    const weight = entry.weight === '' ? 0 : Number(entry.weight);
+    const w = Number(entry.weight);   // "68." parses to 68; empty/garbage → 0
+    const weight = Number.isFinite(w) ? w : 0;
     entryFor(id, true).sets.push({ weight, reps, ts: Date.now() });
     saveCur();
-    if (superMode) advance(); else { entry.reps = ''; active = 'reps'; }
+    if (superMode) advance(); else { entry.reps = ''; active = 'reps'; overwrite = true; }
     renderLogger();
   }
   function repeatLast() {
@@ -241,7 +261,7 @@
     // stamp now — never inherit src's ts (it may come from a past session)
     entryFor(id, true).sets.push({ weight: src.weight, reps: src.reps, ts: Date.now() });
     saveCur();
-    if (superMode) advance(); else { entry = { weight: String(src.weight), reps: '' }; active = 'reps'; }
+    if (superMode) advance(); else { entry = { weight: String(src.weight), reps: '' }; active = 'reps'; overwrite = true; }
     renderLogger();
   }
   function deleteSet(i) {
@@ -272,6 +292,7 @@
   function onKey(e) {
     if (!group) return;
     if (e.key >= '0' && e.key <= '9') { onDigit(e.key); e.preventDefault(); }
+    else if (e.key === '.' || e.key === ',') { onDot(); e.preventDefault(); }
     else if (e.key === 'Backspace') { onBackspace(); e.preventDefault(); }
     else if (e.key === 'Enter') { onEnter(); e.preventDefault(); }
   }

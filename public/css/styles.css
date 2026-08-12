@@ -164,6 +164,14 @@ button { font-family: inherit; cursor: pointer; }
 .np-enter:active { background: var(--accent-dark); }
 .np-enter:disabled { opacity: 0.4; }
 .np-back { background: var(--panel); }
+/* decimal key — kg only (68.5); greyed out while entering reps.
+   line-height:0 drops the line box's baseline to the button's middle, which is
+   the only way a bare period reads as vertically centred. */
+.np-dot { background: var(--panel); font-size: 2.4rem; line-height: 0; }
+.np-dot:disabled { opacity: 0.35; }
+/* the bottom row has 4 keys, so give the 3-key rows' digits a little more
+   weight than the utility keys rather than letting widths drift apart */
+.np-row .np-back, .np-row .np-dot { flex: 0.8; }
 
 .actions { display: flex; gap: 10px; }
 .actions .btn-primary { flex: 1; }

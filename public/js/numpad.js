@@ -11,12 +11,16 @@
   let enterBtn = null;
   const handlers = { digit: null, backspace: null, enter: null };
 
+  // '.' is handed to the digit handler like any other character — the caller
+  // decides what it means (weights take it, rep counts don't) and can grey it
+  // out via setEnabled('.', false).
   const LAYOUT = [
     ['1', '2', '3'],
     ['4', '5', '6'],
     ['7', '8', '9'],
-    ['back', '0', 'enter'],
+    ['back', '0', '.', 'enter'],
   ];
+  const keyBtns = {};
 
   function haptic() {
     if (global.navigator && typeof global.navigator.vibrate === 'function') {
@@ -39,10 +43,11 @@
       btn.textContent = 'OK';
       enterBtn = btn;
     } else {
-      btn.classList.add('np-digit');
+      btn.classList.add(key === '.' ? 'np-dot' : 'np-digit');
       btn.dataset.key = key;
       btn.textContent = key;
     }
+    keyBtns[key] = btn;
     // pointerdown for snappy, no-300ms response; prevent default to avoid
     // synthetic click / focus churn / text selection.
     btn.addEventListener('pointerdown', (e) => {
@@ -63,6 +68,7 @@
   function init(el) {
     container = el;
     container.innerHTML = '';
+    Object.keys(keyBtns).forEach(k => { delete keyBtns[k]; });
     container.classList.add('numpad');
     LAYOUT.forEach(row => {
       const rowEl = document.createElement('div');
@@ -84,10 +90,15 @@
     enterBtn.disabled = enabled === false;
   }
 
+  function setEnabled(key, on) {
+    const btn = keyBtns[key];
+    if (btn) btn.disabled = on === false;
+  }
+
   // Programmatic presses so the hardware keyboard can drive the same path.
   function pressDigit(d) { if (handlers.digit) { haptic(); handlers.digit(d); } }
   function pressBackspace() { if (handlers.backspace) { haptic(); handlers.backspace(); } }
   function pressEnter() { if (enterBtn && !enterBtn.disabled && handlers.enter) { haptic(); handlers.enter(); } }
 
-  global.Numpad = { init, setHandlers, setEnter, pressDigit, pressBackspace, pressEnter };
+  global.Numpad = { init, setHandlers, setEnter, setEnabled, pressDigit, pressBackspace, pressEnter };
 })(typeof window !== 'undefined' ? window : globalThis);
