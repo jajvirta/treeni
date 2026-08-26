@@ -20,6 +20,7 @@
     <nav class="tabs" role="tablist">
       <button class="tab" data-view="today" role="tab">Today</button>
       <button class="tab" data-view="progress" role="tab">Progress</button>
+      <button class="tab" data-view="body" role="tab">Body</button>
       <button class="tab" data-view="program" role="tab">Program</button>
     </nav>
   </header>
@@ -74,6 +75,12 @@
     <div id="progStatus" class="log-status"></div>
   </main>
 
+  <!-- ===================== BODY (experimental: the long cut) ===================== -->
+  <main id="view-body" class="view hidden" role="tabpanel">
+    <div id="bodyBody"></div>
+    <div id="bodyStatus" class="log-status"></div>
+  </main>
+
   <!-- ===================== PROGRAM ===================== -->
   <main id="view-program" class="view hidden" role="tabpanel">
     <details class="guide" open>
@@ -95,9 +102,11 @@
   <script src="js/numpad.js"></script>
   <script src="js/catalog.js"></script>
   <script src="js/stats.js"></script>
+  <script src="js/bodystats.js"></script>
   <script src="js/workout.js"></script>
   <script src="js/progress.js"></script>
   <script src="js/program.js"></script>
+  <script src="js/body.js"></script>
   <script src="js/app.js"></script>
 </body>
 </html>

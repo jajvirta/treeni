@@ -8,7 +8,14 @@
   'use strict';
 
   // --- Settings --------------------------------------------------------
-  const DEFAULTS = { freqAim: 2, freqFloor: 1, unit: 'kg', lastView: 'today', superset: ['bench-press', 'seated-row'] };
+  const DEFAULTS = {
+    freqAim: 2, freqFloor: 1, unit: 'kg', lastView: 'today', superset: ['bench-press', 'seated-row'],
+    // The fat-loss plan (Body view) — config, not data. Three numbers you could
+    // retype in half a minute, unlike the daily weigh-ins, so it stays local.
+    plan: null,
+    // Only self-reported habits — steps are measured, so they're a gauge, not a tap.
+    habitKeys: ['protein', 'sleep'],
+  };
   const SKEY = 'trn.settings';
   let store = {};
   try { store = JSON.parse(global.localStorage.getItem(SKEY)) || {}; } catch (e) { store = {}; }
@@ -48,6 +55,75 @@
   };
   global.Sessions = Sessions;
 
+  // --- Day logs (weigh-in / steps / habits / Zone 2) --------------------
+  // Same mirror pattern as Sessions, plus an outbox: a write that can't reach
+  // the backend stays in the mirror flagged `pending` and is retried on the
+  // next refresh. A weigh-in taken on bad wifi is not worth losing — it's one
+  // point in a series that needs years of them.
+  const DAYS_KEY = 'trn.days';
+  let days = [];
+  try { days = JSON.parse(global.localStorage.getItem(DAYS_KEY)) || []; } catch (e) { days = []; }
+  if (!Array.isArray(days)) days = [];
+  const mirrorDays = () => { try { global.localStorage.setItem(DAYS_KEY, JSON.stringify(days)); } catch (e) { /* ignore */ } };
+
+  // Habits are two-state: true, or the key is absent. `false` and "never said"
+  // mean the same thing to the analytics, so we don't store the difference.
+  function mergeDay(cur, patch) {
+    const out = { ...cur, ...patch, date: cur.date };
+    if (patch.habits) {
+      const h = { ...(cur.habits || {}) };
+      Object.keys(patch.habits).forEach(k => { if (patch.habits[k]) h[k] = true; else delete h[k]; });
+      out.habits = h;
+    }
+    if (out.habits && !Object.keys(out.habits).length) delete out.habits;
+    ['kg', 'steps', 'notes'].forEach(k => { if (out[k] == null || out[k] === '') delete out[k]; });
+    if (Array.isArray(out.cardio) && !out.cardio.length) delete out.cardio;
+    delete out.pending;
+    return out;
+  }
+  const dayEmpty = d => d.kg == null && d.steps == null &&
+    !(d.cardio || []).length && !Object.keys(d.habits || {}).length;
+
+  const Days = {
+    configured() { return global.Store && Store.configured(); },
+    all() { return days.slice().sort(byDate); },
+    get(date) { return days.find(d => d.date === date) || null; },
+    _replace(rec) {
+      const i = days.findIndex(d => d.date === rec.date);
+      if (i >= 0) days[i] = rec; else days.push(rec);
+      mirrorDays();
+    },
+    async refresh() {
+      if (!this.configured()) return days;
+      const pending = days.filter(d => d.pending);
+      const list = await Store.listLogs();
+      days = Array.isArray(list) ? list : [];
+      mirrorDays();
+      for (const p of pending) {                     // flush the outbox
+        const { pending: _p, ...rec } = p;
+        try { this._replace(await Store.putLog(rec.date, rec)); }
+        catch (e) { this._replace(p); }              // still offline — keep it queued
+      }
+      return days;
+    },
+    // Merge a patch into one day and persist it. Returns the stored record.
+    async put(date, patch) {
+      const next = mergeDay(this.get(date) || { date }, patch || {});
+      if (dayEmpty(next)) return this.remove(date);
+      if (!this.configured()) { this._replace({ ...next, pending: true }); return next; }
+      try { const rec = await Store.putLog(date, next); this._replace(rec); return rec; }
+      catch (e) { this._replace({ ...next, pending: true }); throw e; }
+    },
+    async remove(date) {
+      const had = this.get(date);
+      days = days.filter(d => d.date !== date);
+      mirrorDays();
+      if (had && !had.pending && this.configured()) await Store.removeLog(date);
+      return null;
+    },
+  };
+  global.Days = Days;
+
   // Re-render the active view (controllers call this after a write/refresh).
   global.rerender = () => {
     const c = VIEWS[activeView] && VIEWS[activeView].ctrl();
@@ -58,6 +134,7 @@
   const VIEWS = {
     today: { ctrl: () => global.Workout },
     progress: { ctrl: () => global.Progress },
+    body: { ctrl: () => global.Body },
     program: { ctrl: () => global.Program },
   };
   let activeView = null;
@@ -91,6 +168,7 @@
     if (global.Catalog) Catalog.seedIfEmpty();
     if (global.Workout) Workout.init();
     if (global.Progress) Progress.init();
+    if (global.Body) Body.init();
     if (global.Program) Program.init();
 
     // One keyboard bus → active controller. Ignore when typing in form fields.
@@ -105,7 +183,7 @@
     // Pull sessions from the backend, then re-render; if unconnected, send the
     // user to Program to paste their API token.
     if (Sessions.configured()) {
-      Sessions.refresh().then(global.rerender).catch(() => { /* offline: mirror stays */ });
+      Promise.allSettled([Sessions.refresh(), Days.refresh()]).then(global.rerender);
     } else {
       switchView('program');
     }

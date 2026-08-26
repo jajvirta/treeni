@@ -52,6 +52,47 @@ as an alternating **superset** (one set each per round, close to failure, 6–15
 reps), **1–2×/week**. The catalog and the superset group are both editable in
 the Program tab (add other machines as needed).
 
+## The Body view — an experimental long cut (−15 kg over 1–2 years)
+
+A fourth, deliberately separate tab. Same motivation-first stance as the rest of
+the app, transposed: **what you did this week is the loud thing, the scale is the
+quiet instrument underneath it.**
+
+**The program** (all of it derived from the setup numbers; worked here for a
+~105 kg start → 90 kg target):
+
+- **A corridor, not a deadline.** 8-week deficit blocks separated by 2-week
+  maintenance breaks (80 % duty), giving **0.36 kg/week** on the 1-year path and
+  **0.18 kg/week** on the 2-year path while in a deficit — 0.17–0.34 %
+  BW/week, well under the ~0.5–1 %/week range where lean-mass loss and adherence
+  problems concentrate. That's a deficit of roughly **200–390 kcal/day**.
+- **Zone 2, 2–3 × 40–50 min/week**, logged as minutes + average HR. The band
+  comes from age (Tanaka: HRmax ≈ 208 − 0.7 × age; Zone 2 ≈ 60–70 % HRmax) and
+  sessions that ran above it are flagged — drifting into Zone 3 is the classic
+  failure mode.
+- **Protein ~1.6 g/kg of goal weight**, as a daily checkbox rather than grams.
+  The single highest-yield rule, and what preserves lean mass in a deficit.
+- **Steps above 9k (aim 11k)**, *measured*, not self-reported. NEAT collapse is
+  the main hidden failure mode of a long deficit, so the step count is the
+  early-warning system for it.
+- **Maintenance breaks are part of the program**, not a pause: they blunt
+  adaptation and are mostly what makes an 18-month project survivable. The
+  corridor goes flat through them, so a flat scale there is exactly on plan.
+- **Lifting is unchanged.** Expect progression to slow in a deficit; holding your
+  weights while losing is the win.
+
+**Why the maths looks the way it does.** Daily weight noise (~±1 kg) dwarfs the
+signal (~0.2 kg/week). The 95 % band on a trend slope is roughly ±0.32 kg/week
+over 4 weeks of daily weigh-ins, ±0.11 over 8, ±0.06 over 12 — and ~1.5× wider
+again at three weigh-ins a week over the same span. So: the rate is never shown
+without its band, `stallCheck` refuses to speak under 8 weeks, projections are
+date *ranges*, and the first 10 days after a phase change are excluded from every
+window (that's water and glycogen, not fat).
+
+**What it is not:** no calorie or food logging, no BMI/body-fat estimates from
+scale weight, no habit-versus-loss correlation claims, no "behind schedule" red
+state, no weigh-in streak to break (coverage is reported instead).
+
 ## Architecture (inherited from darts-count)
 
 - **Static, no build, no framework.** `public/` shipped as-is; plain ES IIFE
@@ -80,11 +121,19 @@ the Program tab (add other machines as needed).
   `ts` = epoch ms when the set was logged; rest between sets is derived from it in
   `stats.js` (never stored). Absent on legacy/manually added sets → rest unknown.
 - **In-progress** (`trn.current`): autosaved today-session so a reload/leave never loses reps.
-- **Settings/goals** (`trn.settings`): `{ freqAim:2, freqFloor:1, unit, ... }`.
+- **Day log** (`trn.days[]`, mirror of `pk='log'` in DynamoDB): one sparse record
+  per calendar date — `{ date, kg?, steps?, cardio:[{min,avgHr?,kind}], habits:{protein,sleep}, notes? }`.
+  Keyed by date, so a write is an upsert. Habits are two-state: `true` or absent.
+- **Settings/goals** (`trn.settings`): `{ freqAim:2, freqFloor:1, unit, plan, habitKeys, ... }`,
+  where `plan` is the cut config: `{ planStart, startKg, targetKg, deficitWeeks:8,
+  maintWeeks:2, fastMonths:12, slowMonths:24, age|hrMax, stepAim, z2Aim, gPerKg, blocks? }`.
+  Config, not data — it stays local; `blocks` is only materialised when you
+  hand-edit a phase (e.g. extend a break).
 
 ## Modules (`public/js/`, load order)
 
-`store.js → catalog.js → stats.js → workout.js → progress.js → program.js → app.js`
+`store.js → numpad.js → catalog.js → stats.js → bodystats.js → workout.js →
+progress.js → program.js → body.js → app.js`
 
 - **catalog.js** (`Catalog`) — exercise CRUD over localStorage; seeds the default
   program on first run.
@@ -110,6 +159,17 @@ the Program tab (add other machines as needed).
   per-exercise trends (volume line, rep progress, recent PRs/small wins).
 - **program.js** (`Program`, the **Program** view) — the baseline guide (the
   bullet summary above) + editable exercise catalog + the default template.
+- **bodystats.js** (`BodyStats`, pure + Node shim) — the body/energy counterpart
+  to `stats.js`: `trend` (gap-tolerant EMA), `rate` (OLS slope **with an AR(1)-
+  widened interval**), `phases`/`phaseAt` (the deficit/maintenance schedule),
+  `planRates`/`corridor`/`corridorSeries`/`corridorStatus`, `deficitRate`
+  (settled deficit days only), `projection` (a range, duty-cycle aware),
+  `proteinTarget`, `hrZone2`, `weighinStats`, `zone2Stats`, `stepStats`,
+  `habitStats`, and `stallCheck` — the only function that gives advice, and only
+  after 8 weeks.
+- **body.js** (`Body`, the **Body** view) — check-in (weigh-in on the shared
+  Numpad, habit chips, steps, Zone 2) → the "showing up" card → the trend chart
+  (corridor band + daily ticks + trend line) → phase strip → day log.
 
 ## Views / tabs
 
@@ -127,8 +187,12 @@ the Program tab (add other machines as needed).
    quick-repeat "same as last time" set entry, per-set RIR/near-failure tag.
 4. **Optional sync:** wire the DynamoDB backend (adapt `validateSession` for
    workout sessions — already stubbed), paste-token flow like darts, multi-device.
-5. **Nice-to-have:** unit auto-detect, plate calculator, deload week suggestion
-   when frequency dips, body-weight/measurement log.
+5. **DONE — the Body view:** `bodystats.js` + `body.js` + the `/logs` backend
+   routes (`pk='log'`, keyed by date) and the `Days` store with an offline
+   outbox. The experimental long cut described above.
+6. **Nice-to-have:** unit auto-detect, plate calculator, deload week suggestion
+   when frequency dips, body measurements (waist) alongside the weigh-in,
+   pulling steps/HR from a watch instead of typing them.
 
 ## Verifying changes (same as darts-count)
 
@@ -142,3 +206,6 @@ the Program tab (add other machines as needed).
 
 - Not a periodization/coaching engine. Not a social/leaderboard app. Not chasing
   1RM. No forced schedules, streak-loss guilt, or "you're behind" messaging.
+- Not a food diary. The Body view never asks what you ate, and no amount of
+  future convenience justifies adding it — the whole design assumes it isn't
+  there.

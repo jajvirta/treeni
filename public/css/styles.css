@@ -221,3 +221,68 @@ button { font-family: inherit; cursor: pointer; }
   }
 }
 @media (prefers-reduced-motion: reduce) { .np-key, .tab { transition: none; } }
+
+/* ---------- Body (the long cut) ---------- */
+.entry-grid.one { grid-template-columns: 1fr; }
+
+.habits { display: flex; gap: 8px; flex-wrap: wrap; margin: 4px 0 12px; }
+.habit {
+  flex: 1 1 30%; display: flex; flex-direction: column; align-items: center; gap: 2px;
+  background: var(--card); border: 1px solid var(--line); border-radius: 10px;
+  padding: 10px 8px; color: var(--muted); font-size: 0.8rem; font-weight: 600;
+  min-width: 0; transition: border-color 0.15s, color 0.15s;
+}
+.habit .hb-ic { font-size: 1.2rem; filter: grayscale(1) opacity(0.5); }
+.habit .hb-t { font-size: 0.62rem; font-weight: 400; }
+.habit.on { border-color: var(--accent); color: var(--accent); }
+.habit.on .hb-ic { filter: none; }
+/* the steps "chip" is an input, not a toggle — steps are counted, not claimed */
+.habit.steps-in { gap: 4px; font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.04em; }
+.habit.steps-in input {
+  width: 100%; padding: 4px 2px; border: none; border-bottom: 1px solid var(--line);
+  background: transparent; color: var(--text); font-size: 1rem; font-weight: 700;
+  text-align: center; font-variant-numeric: tabular-nums;
+}
+.habit.steps-in input:focus { outline: none; border-bottom-color: var(--accent); }
+
+.mini-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; align-items: end; margin-bottom: 8px; }
+.mini-grid #btnZ2 { grid-column: 1 / -1; }
+.mini-grid .field { min-width: 0; font-size: 0.65rem; text-transform: uppercase; letter-spacing: 0.04em; }
+/* min-width:0 / width:100% on both the track child and the input: a grid or
+   flex item defaults to min-content, and an <input>'s min-content is its `size`
+   attribute (~20 chars), which blows the row past the viewport. */
+.mini-grid input { min-width: 0; width: 100%; padding: 9px 6px; text-align: center; font-variant-numeric: tabular-nums; }
+
+
+.z2-list { display: flex; flex-direction: column; gap: 6px; margin-bottom: 12px; }
+.z2-row {
+  display: grid; grid-template-columns: 5em 5em 1fr 2em; gap: 8px; align-items: center;
+  background: var(--card); border-radius: 8px; padding: 8px 10px;
+  font-size: 0.85rem; font-variant-numeric: tabular-nums;
+}
+.z2-row .z2-flag { font-size: 0.68rem; color: var(--gold); }
+.z2-row.hot { outline: 1px solid var(--gold); }
+
+/* phase strip — where you are in the deficit/maintenance cycle */
+.phase-strip {
+  display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
+  background: var(--panel); border-radius: 10px; padding: 10px 14px; margin-bottom: 10px;
+  font-size: 0.8rem; color: var(--muted);
+}
+.phase-strip .ph-kind {
+  font-size: 0.62rem; text-transform: uppercase; letter-spacing: 0.06em; font-weight: 700;
+  border-radius: 999px; padding: 3px 9px; border: 1px solid var(--line); color: var(--muted);
+}
+.phase-strip .ph-kind.deficit { border-color: var(--accent); color: var(--accent); }
+.phase-strip .ph-kind.maintenance { border-color: var(--gold); color: var(--gold); }
+.phase-strip .btn-ghost { margin-left: auto; padding: 6px 10px; font-size: 0.75rem; }
+
+/* weight chart: corridor band + daily ticks + trend line.
+   preserveAspectRatio="none" stretches x, so every stroke is non-scaling and
+   the raw weigh-ins are vertical hairlines rather than circles — a stretched
+   circle reads as an error, a stretched vertical tick reads as itself. */
+.bchart { display: block; margin: 10px 0 4px; overflow: visible; }
+.bchart .bc-band { fill: var(--accent); opacity: 0.16; }
+.bchart .bc-ticks line { stroke: var(--muted); stroke-width: 1; opacity: 0.55; vector-effect: non-scaling-stroke; }
+.bchart .bc-line polyline { fill: none; stroke: var(--text); stroke-width: 2; vector-effect: non-scaling-stroke; }
+.bchart .bc-target { stroke: var(--gold); stroke-width: 1; stroke-dasharray: 4 4; vector-effect: non-scaling-stroke; }

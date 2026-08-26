@@ -100,12 +100,19 @@
   function openSingle(exId) { group = [exId]; superMode = false; activeIdx = 0; openLogger(); }
   function openSuperset() { const g = supersetGroup(); if (g.length < 2) return; group = g; superMode = true; activeIdx = 0; openLogger(); }
 
+  // The Numpad is a singleton shared with the Body view, so opening the logger
+  // has to claim it back — leaving Today always closes the logger (showHome
+  // clears `group`), so this is the only place it needs re-binding.
+  function bindPad() {
+    Numpad.init(els.pad);
+    Numpad.setHandlers({ digit: onDigit, backspace: onBackspace, enter: onEnter });
+  }
+
   function openLogger() {
     document.body.classList.add('logging');
     els.home.classList.add('hidden');
     els.logger.classList.remove('hidden');
-    Numpad.init(els.pad);
-    Numpad.setHandlers({ digit: onDigit, backspace: onBackspace, enter: onEnter });
+    bindPad();
     prefill(activeId());
     renderLogger();
     startRestTimer();

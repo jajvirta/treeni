@@ -50,6 +50,13 @@
     async create(s) { return (await this._req('POST', '/sessions', s)).session; },
     async update(id, s) { return (await this._req('PUT', '/sessions/' + encodeURIComponent(id), s)).session; },
     async remove(id) { return this._req('DELETE', '/sessions/' + encodeURIComponent(id)); },
+
+    // Day logs (weigh-in / steps / habits / Zone 2) live in their own partition
+    // and are keyed by date, so a write is an idempotent upsert — re-weighing
+    // the same morning overwrites instead of piling up records.
+    async listLogs() { return (await this._req('GET', '/logs')).logs; },
+    async putLog(date, log) { return (await this._req('PUT', '/logs/' + encodeURIComponent(date), log)).log; },
+    async removeLog(date) { return this._req('DELETE', '/logs/' + encodeURIComponent(date)); },
   };
 
   global.Store = Store;

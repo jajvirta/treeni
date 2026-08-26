@@ -1,8 +1,10 @@
 # treeni workout backend
 
 A minimal, single-user serverless backend that durably stores **workout
-sessions**. Required — the app reads/writes all workouts here. All analytics
-stay client-side (`stats.js`); the backend is thin storage only. (Architecture
+sessions** and the Body view's **day logs** (weigh-in / steps / habits / Zone 2).
+Required — the app reads/writes both here. All analytics stay client-side
+(`stats.js` for training, `bodystats.js` for body/energy); the backend is thin
+storage only. (Architecture
 adapted from the darts-count reference app; the wiring is identical, only the
 session shape differs.)
 
@@ -60,17 +62,22 @@ Writes send a **JSON body** (the workout has a nested `entries[]`/`sets[]`).
 | POST   | `/sessions`      | `{ date, entries:[{exerciseId,sets:[{weight,reps,ts?}]}], notes? }` | `{ session }` |
 | PUT    | `/sessions/{id}` | same                                     | `{ session }`      |
 | DELETE | `/sessions/{id}` | —                                        | `{ deleted }`      |
+| GET    | `/logs`          | —                                        | `{ logs: [] }`     |
+| PUT    | `/logs/{date}`   | `{ kg?, steps?, cardio?:[{min,avgHr?,kind}], habits?, notes? }` | `{ log }` |
+| DELETE | `/logs/{date}`   | —                                        | `{ deleted }`      |
 
 The Lambda derives `volume` (Σ weight×reps), `sets`, and `reps` from `entries`.
 Per-set `ts` (epoch ms, when the set was logged) is optional and stored verbatim —
 the client derives rest times from it; a non-integer/out-of-range `ts` is a 400
 rather than being silently dropped.
 
-**Writes carry data in the query string, not a JSON body.** This started as an
-OAC workaround (OAC doesn't sign bodies) and is kept now because it's harmless
-and the client is already written that way — with API Gateway a JSON body would
-work too. The Lambda reads fields from `queryStringParameters` (and still
-accepts a JSON body). Payloads are tiny, so URL-length limits are a non-issue.
+**Day logs are a separate record type in a separate partition** (`pk='log'`,
+`sk=<date>`; sessions use `pk='me'`), so the two never appear in each other's
+queries. Being keyed by date makes `PUT /logs/{date}` an idempotent upsert —
+re-weighing the same morning overwrites rather than piling up records, and the
+client needs no id generation. The path's date always wins over the body's.
+Nothing is derived from a day log: `bodystats.js` owns the trend/rate maths.
+An entirely empty day is a 400 — the client deletes the record instead.
 
 ## One-time setup
 
@@ -115,9 +122,13 @@ exist). Requires `aws`, `jq`, `zip`.
 - **The API Gateway endpoint is public** — anyone who discovers it can reach it,
   so `ORIGIN_SECRET` must be set (the Lambda rejects requests without the
   matching `X-Origin-Secret`, which only CloudFront sends).
-- **DynamoDB is the single source of truth** for sessions. Enter everything via
-  the app's Log tab. (The progress math lives in `public/js/scoring-stats.js`,
-  which the Log view uses and which has a Node export shim for unit tests.)
+- **DynamoDB is the single source of truth** for sessions and day logs. Enter
+  everything via the app (Today / Body). The analytics live in
+  `public/js/stats.js` and `public/js/bodystats.js`, both pure with a Node
+  export shim for unit tests.
+- **Day logs have an outbox.** A weigh-in written while offline stays in the
+  `trn.days` mirror flagged `pending` and is retried on the next refresh, so a
+  morning on bad wifi doesn't cost a data point.
 - **`.webmanifest` content-type:** `aws s3 sync` may upload it as
   `application/octet-stream`. Browsers still honor the `apple-touch-icon` +
   Apple meta tags for iOS home-screen install, so this is cosmetic. If you want
@@ -128,8 +139,9 @@ exist). Requires `aws`, `jq`, `zip`.
 
 ## Local verification
 
-The pure logic is testable without AWS: the `scoring-stats.js` math (Node export
-shim) and the Lambda's router/auth/validation (exported helpers in `index.mjs`,
-which dynamic-imports the AWS SDK only inside the handler). The Log view itself
-is exercised via headless Chrome over CDP against a mocked backend — see
-`CLAUDE.md` "Verifying changes".
+The pure logic is testable without AWS: the `stats.js` / `bodystats.js` maths
+(Node export shims) and the Lambda's router/auth/validation — `parseRoute`,
+`checkAuth`, `validateSession`, `validateDayLog` are all exported from
+`index.mjs`, which dynamic-imports the AWS SDK only inside the handler. The
+views themselves are exercised via headless Chrome over CDP against a mocked
+backend — see `CLAUDE.md` "Verifying changes".
