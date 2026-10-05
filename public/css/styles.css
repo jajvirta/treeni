@@ -75,12 +75,16 @@ button { font-family: inherit; cursor: pointer; }
 .tk-unit { font-size: 0.75rem; color: var(--muted); }
 .tk-sub { font-size: 0.75rem; color: var(--muted); line-height: 1.45; }
 .tk-cap { font-size: 0.65rem; color: var(--muted); text-transform: uppercase; letter-spacing: 0.04em; }
+.spark-minor { margin-top: 6px; opacity: 0.75; }
 
 /* weekly frequency dots */
 .wk-dots { display: flex; gap: 5px; flex-wrap: wrap; margin-top: 6px; }
 .wk-dot { width: 14px; height: 14px; border-radius: 50%; background: var(--line); }
 .wk-dot.floor { background: var(--accent-dark); }
 .wk-dot.aim { background: var(--accent); }
+.wk-dot.off { background: var(--muted); }
+.off-toggle { font-size: 0.75rem; color: var(--muted); margin-top: 8px; }
+.off-toggle input[type="checkbox"] { width: 18px; height: 18px; accent-color: var(--muted); }
 
 /* muscle-volume gauge vs the ~4-set floor */
 .gauge { display: flex; flex-direction: column; gap: 6px; margin-top: 8px; }

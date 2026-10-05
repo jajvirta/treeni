@@ -40,6 +40,7 @@
     const aim = opts.freqAim || 2;
     const now = (opts.nowDay != null) ? opts.nowDay : Math.floor(Date.now() / DAY);
     const curWeek = weekIndexFromDay(now);
+    const offWeeks = new Set(opts.offWeeks || []);
 
     const counts = {};
     let firstWeek = curWeek;
@@ -50,21 +51,28 @@
     });
 
     const thisWeek = counts[curWeek] || 0;
+    const curOff = offWeeks.has(curWeek);
     // Count back from the current week; a not-yet-met current week is skipped
-    // (in progress), not treated as a miss.
+    // (in progress), not treated as a miss. Below that: a week that hit the
+    // floor always extends the streak (marking it "off" never undoes real
+    // training); a week that missed only breaks the streak if it isn't
+    // excused — `off` protects, it never punishes.
     let streak = 0;
     let w = (thisWeek >= floor) ? curWeek : curWeek - 1;
     for (; w >= firstWeek; w--) {
-      if ((counts[w] || 0) >= floor) streak++; else break;
+      if ((counts[w] || 0) >= floor) { streak++; continue; }
+      if (offWeeks.has(w)) continue;
+      break;
     }
 
     const perWeek = [];
-    for (let k = firstWeek; k <= curWeek; k++) perWeek.push({ week: k, count: counts[k] || 0 });
+    for (let k = firstWeek; k <= curWeek; k++) perWeek.push({ week: k, count: counts[k] || 0, off: offWeeks.has(k) });
 
     return {
       thisWeek, streak, floor, aim,
       onAim: thisWeek >= aim,
       aboveFloor: thisWeek >= floor,
+      off: curOff,
       weeksActive: Object.keys(counts).length,
       perWeek,
       totalSessions: sessions.length,

@@ -10,6 +10,9 @@
   // --- Settings --------------------------------------------------------
   const DEFAULTS = {
     freqAim: 2, freqFloor: 1, unit: 'kg', lastView: 'today', superset: ['bench-press', 'seated-row'],
+    // Weeks excused from the streak (sick/injured/travel) — week-index ints
+    // from Stats.weekIndexFromDay. Config, not data: stays local like `plan`.
+    offWeeks: [],
     // The fat-loss plan (Body view) — config, not data. Three numbers you could
     // retype in half a minute, unlike the daily weigh-ins, so it stays local.
     plan: null,
